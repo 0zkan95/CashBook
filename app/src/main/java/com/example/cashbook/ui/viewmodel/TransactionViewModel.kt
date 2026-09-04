@@ -1,6 +1,7 @@
 package com.example.cashbook.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cashbook.data.AppDatabase
@@ -11,6 +12,9 @@ import com.example.cashbook.data.TransactionItem
 import com.example.cashbook.data.UserAccount
 import com.example.cashbook.data.Note
 import com.example.cashbook.data.NoteItem
+import com.example.cashbook.util.GithubRelease
+import com.example.cashbook.util.UpdateManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,11 +65,54 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
     val allNotes: StateFlow<List<Note>> = noteDao.getAllNotes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _isDarkMode = MutableStateFlow(false)
+    private val prefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+    private val _isDarkMode = MutableStateFlow(prefs.getBoolean("dark_mode", false))
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
+    private val _availableUpdate = MutableStateFlow<GithubRelease?>(null)
+    val availableUpdate: StateFlow<GithubRelease?> = _availableUpdate.asStateFlow()
+
+    private val _updateProgress = MutableStateFlow(0f)
+    val updateProgress: StateFlow<Float> = _updateProgress.asStateFlow()
+
+    fun checkForUpdates(currentVersion: String) {
+        UpdateManager.checkForUpdate(currentVersion) { release ->
+            _availableUpdate.value = release
+        }
+    }
+
+    fun startUpdate(context: Context, release: GithubRelease) {
+        val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") } ?: return
+        UpdateManager.downloadAndInstall(
+            context = context,
+            url = apkAsset.browser_download_url,
+            fileName = apkAsset.name,
+            onProgress = { _updateProgress.value = it },
+            onComplete = { /* Handle completion if needed */ }
+        )
+    }
+
+    private val _lastBackupTimestamp = MutableStateFlow(prefs.getLong("last_backup", 0L))
+    val lastBackupTimestamp: StateFlow<Long> = _lastBackupTimestamp.asStateFlow()
+
     fun toggleDarkMode() {
-        _isDarkMode.value = !_isDarkMode.value
+        val newValue = !_isDarkMode.value
+        _isDarkMode.value = newValue
+        prefs.edit().putBoolean("dark_mode", newValue).apply()
+    }
+
+    fun performBackup(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            // Simulate backup logic
+            delay(1500)
+            val success = true // This would be the actual API result
+            if (success) {
+                val now = System.currentTimeMillis()
+                _lastBackupTimestamp.value = now
+                prefs.edit().putLong("last_backup", now).apply()
+            }
+            onResult(success)
+        }
     }
 
     init {

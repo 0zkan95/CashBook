@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,8 +49,15 @@ fun HomeScreen(viewModel: TransactionViewModel = viewModel()) {
     var showAccountScreen by rememberSaveable { mutableStateOf(false) }
     var showBackupScreen by rememberSaveable { mutableStateOf(false) }
     var showNotesScreen by rememberSaveable { mutableStateOf(false) }
+    var showVersionScreen by rememberSaveable { mutableStateOf(false) }
     var showSearch by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val currentVersion = "v1.1" // Match build.gradle
+    
+    LaunchedEffect(Unit) {
+        viewModel.checkForUpdates(currentVersion)
+    }
 
     var customFilters by remember { mutableStateOf<CustomFilters?>(null) }
 
@@ -107,6 +115,10 @@ fun HomeScreen(viewModel: TransactionViewModel = viewModel()) {
                     showBackupScreen = true
                     scope.launch { drawerState.close() }
                 },
+                onVersionClick = {
+                    showVersionScreen = true
+                    scope.launch { drawerState.close() }
+                },
                 onSettingsClick = { scope.launch { drawerState.close() } },
                 isDarkMode = isDarkMode,
                 onToggleDarkMode = { viewModel.toggleDarkMode() }
@@ -146,12 +158,11 @@ fun HomeScreen(viewModel: TransactionViewModel = viewModel()) {
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
 
-                ChartPlaceholder(
-                    transactions = visibleTransactions,
-                    currentPeriod = selectedPeriod
-                )
-
-                if (visibleTransactions.isEmpty()) {
+                if (visibleTransactions.isEmpty() && searchQuery.isBlank()) {
+                    ChartPlaceholder(
+                        transactions = visibleTransactions,
+                        currentPeriod = selectedPeriod
+                    )
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -168,19 +179,39 @@ fun HomeScreen(viewModel: TransactionViewModel = viewModel()) {
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                if (searchQuery.isBlank()) "No transactions in this period.\nTap Cash In or Cash Out to start!" 
-                                else "No matches for \"$searchQuery\"",
+                                "No transactions in this period.\nTap Cash In or Cash Out to start!",
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                     }
+                } else if (visibleTransactions.isEmpty() && searchQuery.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No matches for \"$searchQuery\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
                     ) {
+                        item {
+                            ChartPlaceholder(
+                                transactions = visibleTransactions,
+                                currentPeriod = selectedPeriod
+                            )
+                        }
                         items(visibleTransactions, key = { it.id }) { transaction ->
                             TransactionListRow(
                                 transaction = transaction,
@@ -294,6 +325,10 @@ fun HomeScreen(viewModel: TransactionViewModel = viewModel()) {
     if (showBackupScreen) {
         BackupRestoreScreen(
             activeAccount = activeAccount,
+            lastBackupTimestamp = viewModel.lastBackupTimestamp.collectAsState().value,
+            onBackupNow = { onResult: (Boolean) -> Unit ->
+                viewModel.performBackup(onResult)
+            },
             onDismiss = { showBackupScreen = false },
             onMenuClick = { scope.launch { drawerState.open() } }
         )
@@ -315,6 +350,19 @@ fun HomeScreen(viewModel: TransactionViewModel = viewModel()) {
                 viewModel.getItemsForNote(noteId)
             },
             onDismiss = { showNotesScreen = false },
+            onMenuClick = { scope.launch { drawerState.open() } }
+        )
+    }
+
+    if (showVersionScreen) {
+        val context = LocalContext.current
+        VersionControlScreen(
+            currentVersion = currentVersion,
+            availableUpdate = viewModel.availableUpdate.collectAsState().value,
+            updateProgress = viewModel.updateProgress.collectAsState().value,
+            onCheckUpdate = { viewModel.checkForUpdates(currentVersion) },
+            onStartUpdate = { release -> viewModel.startUpdate(context, release) },
+            onDismiss = { showVersionScreen = false },
             onMenuClick = { scope.launch { drawerState.open() } }
         )
     }

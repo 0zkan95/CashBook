@@ -54,8 +54,8 @@ fun ChartPlaceholder(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(340.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .height(280.dp),
         colors = CardDefaults.cardColors(
             containerColor = chartBackgroundColor,
         )
@@ -63,19 +63,10 @@ fun ChartPlaceholder(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = if (isShowingIncome) "Income Breakdown" else "Expense Breakdown",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isShowingIncome) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-
             if (displayData.isEmpty()) {
                 Box(
                     modifier = Modifier

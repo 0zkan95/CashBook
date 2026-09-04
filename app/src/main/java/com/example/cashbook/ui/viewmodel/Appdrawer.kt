@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -19,14 +20,17 @@ fun AppDrawerContent(
     onNotesClick: () -> Unit,
     onAccountClick: () -> Unit,
     onBackupClick: () -> Unit,
+    onVersionClick: () -> Unit,
     onSettingsClick: () -> Unit,
     isDarkMode: Boolean,
     onToggleDarkMode: () -> Unit
 ) {
     val drawerBgColor = MaterialTheme.colorScheme.background
     val contentColor = MaterialTheme.colorScheme.onBackground
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     ModalDrawerSheet(
+        modifier = Modifier.width(screenWidth * 0.75f),
         drawerContainerColor = drawerBgColor
     ) {
         Text(
@@ -90,6 +94,14 @@ fun AppDrawerContent(
             selected = false,
             icon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
             onClick = onBackupClick,
+            modifier = Modifier.padding(horizontal = 12.dp),
+            colors = itemColors
+        )
+        NavigationDrawerItem(
+            label = { Text("Version Control") },
+            selected = false,
+            icon = { Icon(Icons.Default.SystemUpdate, contentDescription = null) },
+            onClick = onVersionClick,
             modifier = Modifier.padding(horizontal = 12.dp),
             colors = itemColors
         )
